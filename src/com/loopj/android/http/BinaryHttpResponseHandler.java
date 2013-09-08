@@ -19,6 +19,7 @@
 package com.loopj.android.http;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.regex.Pattern;
 
 import org.apache.http.Header;
@@ -117,6 +118,15 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler {
 
     protected void sendSuccessMessage(int statusCode, byte[] responseBody) {
         sendMessage(obtainMessage(SUCCESS_MESSAGE, new Object[]{statusCode, responseBody}));
+    }
+
+    @Override
+    protected void sendFailureMessage(Throwable e, String responseBody) {
+        try {
+            sendFailureMessage(e, responseBody.getBytes("UTF-8"));
+        } catch (UnsupportedEncodingException e1) {
+            e1.printStackTrace();
+        }
     }
 
     @Override
