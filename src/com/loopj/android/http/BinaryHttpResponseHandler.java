@@ -63,6 +63,8 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler {
         "image/png"
     };
 
+    private boolean mCheckContentType = true;
+
     /**
      * Creates a new BinaryHttpResponseHandler
      */
@@ -77,6 +79,14 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler {
     public BinaryHttpResponseHandler(String[] allowedContentTypes) {
         this();
         mAllowedContentTypes = allowedContentTypes;
+    }
+
+    /**
+     * Check responsed Content-Type header, if not in the allowed list, send failure message.
+     * @param enabled true if enable the checking, otherwise disable it. By default, the checking is enabled.
+     */
+    public void enableContentTypeChecking(boolean enabled) {
+        mCheckContentType = enabled;
     }
 
 
@@ -169,24 +179,26 @@ public class BinaryHttpResponseHandler extends AsyncHttpResponseHandler {
     @Override
     void sendResponseMessage(HttpResponse response) {
         StatusLine status = response.getStatusLine();
-        Header[] contentTypeHeaders = response.getHeaders("Content-Type");
         byte[] responseBody = null;
-        if(contentTypeHeaders.length != 1) {
-            //malformed/ambiguous HTTP Header, ABORT!
-            sendFailureMessage(new HttpResponseException(status.getStatusCode(), "None, or more than one, Content-Type Header found!"), responseBody);
-            return;
-        }
-        Header contentTypeHeader = contentTypeHeaders[0];
-        boolean foundAllowedContentType = false;
-        for(String anAllowedContentType : mAllowedContentTypes) {
-            if(Pattern.matches(anAllowedContentType, contentTypeHeader.getValue())) {
-                foundAllowedContentType = true;
+        if (mCheckContentType) {
+            Header[] contentTypeHeaders = response.getHeaders("Content-Type");
+            if(contentTypeHeaders.length != 1) {
+                //malformed/ambiguous HTTP Header, ABORT!
+                sendFailureMessage(new HttpResponseException(status.getStatusCode(), "None, or more than one, Content-Type Header found!"), responseBody);
+                return;
             }
-        }
-        if(!foundAllowedContentType) {
-            //Content-Type not in allowed list, ABORT!
-            sendFailureMessage(new HttpResponseException(status.getStatusCode(), "Content-Type not allowed!"), responseBody);
-            return;
+            Header contentTypeHeader = contentTypeHeaders[0];
+            boolean foundAllowedContentType = false;
+            for(String anAllowedContentType : mAllowedContentTypes) {
+                if(Pattern.matches(anAllowedContentType, contentTypeHeader.getValue())) {
+                    foundAllowedContentType = true;
+                }
+            }
+            if(!foundAllowedContentType) {
+                //Content-Type not in allowed list, ABORT!
+                sendFailureMessage(new HttpResponseException(status.getStatusCode(), "Content-Type not allowed!"), responseBody);
+                return;
+            }
         }
         try {
             HttpEntity entity = null;
